@@ -1,10 +1,11 @@
 /*
- * $Id: gai.c,v 1.1 2002/02/27 15:22:22 urs Exp $
+ * $Id: gai.c,v 1.2 2003/10/16 10:43:21 urs Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,25 +13,78 @@
 
 int main(int argc, char **argv)
 {
-    struct addrinfo *addr;
+    int opt;
+    struct addrinfo *addr, hints;
     int errcode;
     struct sockaddr_in  *addr_in;
     struct sockaddr_in6 *addr_in6;
+    char *p;
+    int neg = 0;
 
     char *hostname = NULL;
     char *servname = NULL;
+    int flags      = AI_PASSIVE;
+    int family     = AF_UNSPEC;
+    int type       = 0;
+    int protocol   = 0;
+    int errflg     = 0;
 
-    if (argc != 2 && argc != 3) {
-	fprintf(stderr, "Usage: %s host [service]\n", argv[0]);
+    while ((opt = getopt(argc, argv, "46t:p:f:")) != -1) {
+	switch (opt) {
+	case '4':
+	    family = AF_INET;
+	    break;
+	case '6':
+	    family = AF_INET6;
+	    break;
+	case 'f':
+	    for (p = strtok(optarg, ","); p; p = strtok(NULL, ",")) {
+		if (p[0] == '!' || p[0] == '-')
+		    neg = 1, p++;
+		if (strcmp(p, "passive") == 0)
+		    neg ? (flags &= ~AI_PASSIVE) : (flags |= AI_PASSIVE);
+	    }
+	    break;
+	case 't':
+	    if (strcmp(optarg, "stream") == 0)
+		type = SOCK_STREAM;
+	    else if (strcmp(optarg, "dgram") == 0)
+		type = SOCK_DGRAM;
+	    else
+		fprintf(stderr, "Unknown socket type\n");
+	    break;
+	case 'p':
+	    if (strcmp(optarg, "tcp") == 0)
+		protocol = IPPROTO_TCP;
+	    else if (strcmp(optarg, "udp") == 0)
+		protocol = IPPROTO_UDP;
+	    else
+		fprintf(stderr, "Unknown protocol\n");
+	    break;
+	default:
+	    errflg = 1;
+	    break;
+	}
+    }
+
+    if (errflg || argc - optind != 1 && argc - optind != 2) {
+	fprintf(stderr, "Usage: %s [options] host [service]\n", argv[0]);
 	exit(1);
     }
 
-    if (argc > 1 && strcmp(argv[1], "-") != 0)
-	hostname = argv[1];
-    if (argc > 2 && strcmp(argv[2], "-") != 0)
-	servname = argv[2];
+    if (strcmp(argv[optind], "-") != 0)
+	hostname = argv[optind];
+    optind++;
+    if (argc - optind > 0 && strcmp(argv[optind], "-") != 0)
+	servname = argv[optind];
 
-    if ((errcode = getaddrinfo(hostname, servname, NULL, &addr)) != 0) {
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags    = flags;
+    hints.ai_family   = family;
+    hints.ai_socktype = type;
+    hints.ai_protocol = protocol;
+
+    if ((errcode = getaddrinfo(hostname, servname, &hints, &addr)) != 0) {
 	fprintf(stderr, "%s\n", gai_strerror(errcode));
 	exit(1);
     }

@@ -1,5 +1,5 @@
 /*
- * $Id: udp-ping.c,v 1.1 2001/02/26 13:11:30 urs Exp $
+ * $Id: udp-ping.c,v 1.2 2003/03/07 08:20:55 urs Exp $
  */
 
 #include <stdio.h>
@@ -7,12 +7,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 
-void ping(int sock, struct sockaddr_in *addr);
+void ping(int sock, struct sockaddr_in *addr, int seqno);
 void wait(int sock);
 
 int main(int argc, char **argv)
@@ -22,6 +23,7 @@ int main(int argc, char **argv)
     int port;
     char *host;
     struct hostent *hp;
+    int i;
 
     int do_connect = 0;
 
@@ -51,15 +53,17 @@ int main(int argc, char **argv)
 	perror("connect");
 
     if (do_connect) {
-	ping(sock, NULL);
-	wait(sock);
-	ping(sock, NULL);
-	wait(sock);
+	for (i = 0; i < 8; i++) {
+	    ping(sock, NULL, i);
+	    wait(sock);
+	    sleep(1);
+	}
     } else {
-	ping(sock, &addr);
-	wait(sock);
-	ping(sock, &addr);
-	wait(sock);
+	for (i = 0; i < 8; i++) {
+	    ping(sock, &addr, i);
+	    wait(sock);
+	    sleep(1);
+	}
     }
 
     close(sock);
@@ -67,31 +71,51 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void ping(int sock, struct sockaddr_in *addr)
+struct message {
+    int seqno;
+    struct timeval time;
+};
+
+void ping(int sock, struct sockaddr_in *addr, int seqno)
 {
-    static char msg[] = "abc\n";
+    struct message msg;
+
+    msg.seqno = seqno;
+    gettimeofday(&msg.time, NULL);
 
     if (addr) {
-	if (sendto(sock, msg, strlen(msg), 0,
+	if (sendto(sock, &msg, sizeof(msg), 0,
 		   (struct sockaddr *)addr, sizeof(*addr)) < 0)
 	    perror("sendto");
     } else {
-	if (send(sock, msg, strlen(msg), 0) < 0)
+	if (send(sock, &msg, sizeof(msg), 0) < 0)
 	    perror("send");
     }
 }
 
 void wait(int sock)
 {
-    char msg[8192];
+    char buf[8192];
     struct sockaddr_in peer;
     int length = sizeof(peer);
+    int nbytes;
+    struct timeval now;
+    int seqno, delay;
 
-    if (recvfrom(sock, msg, sizeof(msg), 0,
-		 (struct sockaddr *)&peer, &length) < 0) {
+    if ((nbytes = recvfrom(sock, buf, sizeof(buf), 0,
+			   (struct sockaddr *)&peer, &length)) < 0) {
 	perror("recv");
+    } else if (nbytes != sizeof(struct message)) {
+	fprintf(stderr, "wrong-sized dgram received\n");
     } else {
-	printf("dgram received from: %s:%d\n", inet_ntoa(peer.sin_addr),
-	       ntohs(peer.sin_port));
+	struct message *msg = (struct message *)buf;
+
+	gettimeofday(&now, NULL);
+	seqno = msg->seqno;
+	delay = 1000000 * (now.tv_sec - msg->time.tv_sec)
+	    + (now.tv_usec - msg->time.tv_usec);
+	printf("dgram received from: %s:%d, seqno = %d, delay = %.3fms\n",
+	       inet_ntoa(peer.sin_addr), ntohs(peer.sin_port),
+	       seqno, delay / 1000.0);
     }
 }

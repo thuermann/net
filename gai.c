@@ -1,5 +1,5 @@
 /*
- * $Id: gai.c,v 1.2 2003/10/16 10:43:21 urs Exp $
+ * $Id: gai.c,v 1.3 2009/10/30 02:14:48 urs Exp $
  */
 
 #include <stdio.h>
@@ -10,6 +10,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+
+static int usage(const char *name)
+{
+    fprintf(stderr,
+	    "Usage: %s [-46][-t type][-p proto][-f flags] host [service]\n",
+	    name);
+}
 
 int main(int argc, char **argv)
 {
@@ -68,7 +75,7 @@ int main(int argc, char **argv)
     }
 
     if (errflg || argc - optind != 1 && argc - optind != 2) {
-	fprintf(stderr, "Usage: %s [options] host [service]\n", argv[0]);
+	usage(argv[0]);
 	exit(1);
     }
 

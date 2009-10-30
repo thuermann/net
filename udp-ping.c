@@ -1,5 +1,5 @@
 /*
- * $Id: udp-ping.c,v 1.2 2003/03/07 08:20:55 urs Exp $
+ * $Id: udp-ping.c,v 1.3 2009/10/30 02:15:15 urs Exp $
  */
 
 #include <stdio.h>
@@ -16,6 +16,11 @@
 void ping(int sock, struct sockaddr_in *addr, int seqno);
 void wait(int sock);
 
+static void usage(const char *name)
+{
+    fprintf(stderr, "Usage: %s [-c] host port\n", name);
+}
+
 int main(int argc, char **argv)
 {
     int sock;
@@ -27,9 +32,14 @@ int main(int argc, char **argv)
 
     int do_connect = 0;
 
-    if (strcmp(argv[1], "-c") == 0) {
+    if (argc > 1 && strcmp(argv[1], "-c") == 0) {
 	do_connect = 1;
 	argc--, argv++;
+    }
+
+    if (argc != 3) {
+	usage(argv[0]);
+	exit(1);
     }
 
     host = argv[1];

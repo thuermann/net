@@ -1,5 +1,5 @@
 /*
- * $Id: udp-echo.c,v 1.1 2001/02/26 13:11:30 urs Exp $
+ * $Id: udp-echo.c,v 1.2 2009/10/30 02:15:15 urs Exp $
  */
 
 #include <stdio.h>
@@ -9,11 +9,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+static void usage(const char *name)
+{
+    fprintf(stderr, "Usage: %s port\n", name);
+}
+
 int main(int argc, char **argv)
 {
     int sock, length;
     struct sockaddr_in addr;
     int ip_addr, port;
+
+    if (argc != 2) {
+	usage(argv[0]);
+	exit(1);
+    }
 
     ip_addr = INADDR_ANY;
     port    = atoi(argv[1]);

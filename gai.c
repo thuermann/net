@@ -1,5 +1,5 @@
 /*
- * $Id: gai.c,v 1.3 2009/10/30 02:14:48 urs Exp $
+ * $Id: gai.c,v 1.4 2010/06/29 22:33:13 urs Exp $
  */
 
 #include <stdio.h>
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     struct sockaddr_in  *addr_in;
     struct sockaddr_in6 *addr_in6;
     char *p;
-    int neg = 0;
+    int neg;
 
     char *hostname = NULL;
     char *servname = NULL;
@@ -48,6 +48,8 @@ int main(int argc, char **argv)
 	    for (p = strtok(optarg, ","); p; p = strtok(NULL, ",")) {
 		if (p[0] == '!' || p[0] == '-')
 		    neg = 1, p++;
+		else
+		    neg = 0;
 		if (strcmp(p, "passive") == 0)
 		    neg ? (flags &= ~AI_PASSIVE) : (flags |= AI_PASSIVE);
 	    }

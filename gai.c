@@ -1,5 +1,5 @@
 /*
- * $Id: gai.c,v 1.4 2010/06/29 22:33:13 urs Exp $
+ * $Id: gai.c,v 1.5 2011/01/31 22:47:00 urs Exp $
  */
 
 #include <stdio.h>
@@ -9,7 +9,6 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 
 static int usage(const char *name)
 {
@@ -23,8 +22,6 @@ int main(int argc, char **argv)
     int opt;
     struct addrinfo *addr, hints;
     int errcode;
-    struct sockaddr_in  *addr_in;
-    struct sockaddr_in6 *addr_in6;
     char *p;
     int neg;
 
@@ -100,25 +97,16 @@ int main(int argc, char **argv)
 
     printf("flags famly type proto  len\n");
     for (; addr; addr = addr->ai_next) {
-	printf("%05x %5d %4d %5d %4d  ",
+	char host[NI_MAXHOST], serv[NI_MAXSERV];
+
+	getnameinfo(addr->ai_addr, addr->ai_addrlen,
+		    host, sizeof(host), serv, sizeof(serv),
+		    NI_NUMERICHOST | NI_NUMERICSERV);
+
+	printf("%05x %5d %4d %5d %4d  %s %s\n",
 	       addr->ai_flags,
 	       addr->ai_family, addr->ai_socktype, addr->ai_protocol,
-	       addr->ai_addrlen);
-	switch (addr->ai_family) {
-	    char buf[INET6_ADDRSTRLEN];
-	case AF_INET:
-	    addr_in = (struct sockaddr_in *)(addr->ai_addr);
-	    printf("%s %d\n",
-		   inet_ntop(AF_INET, &addr_in->sin_addr, buf, sizeof(buf)),
-		   ntohs(addr_in->sin_port));
-	    break;
-	case AF_INET6:
-	    addr_in6 = (struct sockaddr_in6 *)(addr->ai_addr);
-	    printf("%s %d\n",
-		   inet_ntop(AF_INET6, &addr_in6->sin6_addr, buf, sizeof(buf)),
-		   ntohs(addr_in6->sin6_port));
-	    break;
-	}
+	       addr->ai_addrlen, host, serv);
     }
 
     freeaddrinfo(addr);
